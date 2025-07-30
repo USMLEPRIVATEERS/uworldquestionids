@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anki Tag Browser - UWorld QIDs</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Login Screen */
+        .login-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .login-container.hidden {
+            display: none;
+        }
+
+        .login-box {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 12px;
+            padding: 40px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-box h1 {
+            color: #ffffff;
+            font-size: 24px;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .login-box .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 15px;
+            background: #0a0a0a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            color: #e0e0e0;
+            font-size: 16px;
+            margin-bottom: 20px;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+
+        .login-input:focus {
+            outline: none;
+            border-color: #4a7fff;
+            background: rgba(74, 127, 255, 0.05);
+        }
+
+        .login-button {
+            width: 100%;
+            padding: 15px;
+            background: #4a7fff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .login-button:hover {
+            background: #3a6fee;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(74, 127, 255, 0.3);
+        }
+
+        .login-button:active {
+            transform: translateY(0);
+        }
+
+        .login-error {
+            color: #ff4444;
+            font-size: 14px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .login-error.show {
+            display: block;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #0a0a0a;
+            color: #e0e0e0;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            height: 100vh;
+            gap: 1px;
+            background: #1a1a1a;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: #0f0f0f;
+            border-right: 1px solid #2a2a2a;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-bottom: 1px solid #2a2a2a;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .sidebar-header h2 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .search-box {
+            margin-top: 10px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #ffffff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .search-box input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.15);
+            border-color: #4a7fff;
+        }
+
+        /* Tag Tree */
+        .tag-tree {
+            padding: 10px;
+        }
+
+        .tag-node {
+            margin: 2px 0;
+        }
+
+        .tag-content {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .tag-content:hover {
+            background: rgba(74, 127, 255, 0.1);
+        }
+
+        .tag-content.selected {
+            background: rgba(74, 127, 255, 0.2);
+            border-left: 3px solid #4a7fff;
+        }
+
+        .tag-arrow {
+            width: 16px;
+            height: 16px;
+            margin-right: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s ease;
+        }
+
+        .tag-arrow.expanded {
+            transform: rotate(90deg);
+        }
+
+        .tag-arrow svg {
+            width: 12px;
+            height: 12px;
+            fill: #666;
+        }
+
+        .tag-label {
+            flex: 1;
+            font-size: 13px;
+            color: #d0d0d0;
+        }
+
+        .tag-count {
+            font-size: 11px;
+            color: #666;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2px 6px;
+            border-radius: 3px;
+            margin-left: 8px;
+        }
+
+        .tag-children {
+            margin-left: 20px;
+            display: none;
+        }
+
+        .tag-children.expanded {
+            display: block;
+        }
+
+        /* Main Content */
+        .main-content {
+            background: #0a0a0a;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .content-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+
+        .content-header h3 {
+            font-size: 20px;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .breadcrumb {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .breadcrumb span {
+            color: #4a7fff;
+        }
+
+        /* Question IDs Section */
+        .qids-section {
+            margin: 20px 0;
+        }
+
+        .qids-section h4 {
+            margin: 20px 0 10px;
+            color: #4a7fff;
+            font-size: 16px;
+        }
+
+        .qids-box {
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+
+        .qids-box:hover {
+            border-color: #3a3a3a;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+
+        /* Copy Button */
+        .copy-button {
+            background: #4a7fff;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .copy-button:hover {
+            background: #3a6fee;
+            transform: translateY(-1px);
+        }
+
+        .copy-button:active {
+            transform: translateY(0);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #2a2a2a;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: #3a3a3a;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-box">
+            <div class="logo">📚</div>
+            <h1>Anki Tag Browser</h1>
+            <input 
+                type="password" 
+                class="login-input" 
+                id="cpfInput" 
+                placeholder="Digite seu CPF"
+                maxlength="11"
+                pattern="\d{11}"
+                autofocus
+            >
+            <button class="login-button" onclick="validateLogin()">Entrar</button>
+            <div class="login-error" id="loginError">CPF inválido. Tente novamente.</div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div class="container" style="display: none;" id="mainApp">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h2>Ward Academy UWorld QIDs</h2>
+                <div class="search-box">
+                    <input type="text" placeholder="Buscar tags..." id="searchInput">
+                </div>
+            </div>
+            <div class="tag-tree" id="tagTree"></div>
+        </aside>
+
+        <main class="main-content">
+            <div id="contentArea">
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                    </svg>
+                    <h3>Selecione uma tag para ver os Question IDs</h3>
+                    <p>Navegue pelas tags na barra lateral</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // CPFs AUTORIZADOS - ADICIONE AQUI OS CPFs PERMITIDOS
+        const CPFS_AUTORIZADOS = [
+            '70929488199',  // Seu CPF
+            // Adicione outros CPFs aqui
+        ];
+
+        // COLE SEUS DADOS DO ANKI AQUI
+        const RAW_TAGS = `
+
+`;
+
+        // Variáveis globais
+        let tagHierarchy = {};
+        let allCards = [];
+
+        // Parser dos dados do Anki
+        function parseAnkiData(rawData) {
+            tagHierarchy = {};
+            allCards = [];
+
+            const lines = rawData.split('\n');
+            let isHeader = true;
+
+            lines.forEach(line => {
+                if (!line.trim()) return;
+                
+                // Pular linhas de configuração
+                if (line.startsWith('#')) {
+                    isHeader = true;
+                    return;
+                }
+
+                if (isHeader) {
+                    isHeader = false;
+                    return;
+                }
+
+                const fields = line.split('\t');
+                if (fields.length < 19) return;
+
+                const tagField = fields[18]; // Campo 19 (índice 18) contém as tags
+                if (!tagField) return;
+
+                // Limpar o campo de tags removendo aspas extras no início e fim
+                const cleanedTagField = tagField.replace(/^["']|["']$/g, '').trim();
+
+                const card = {
+                    question: fields[0],
+                    answer: fields[1],
+                    tags: cleanedTagField.split(' ').filter(tag => tag.trim())
+                };
+
+                allCards.push(card);
+
+                // Processar tags e extrair QIDs
+                card.tags.forEach(tag => {
+                    processTag(tag, card);
+                });
+            });
+        }
+
+        // Processar cada tag
+        function processTag(tag, card) {
+            // Limpar tag removendo aspas no início e fim
+            tag = tag.replace(/^["']|["']$/g, '').trim();
+            
+            // Extrair QID do UWorld se existir
+            const uworldMatch = tag.match(/#AK_Step(\d)_v12::#UWorld(?:::Step)?::(\d+)/);
+            if (uworldMatch) {
+                const step = uworldMatch[1];
+                const qid = uworldMatch[2];
+                
+                // Adicionar QID à estrutura
+                if (!card.qids) card.qids = [];
+                card.qids.push({ step, qid });
+            }
+
+            // Construir hierarquia de tags
+            const parts = tag.split('::').map(part => part.trim());
+            let current = tagHierarchy;
+
+            parts.forEach((part, index) => {
+                // Limpar cada parte removendo aspas extras
+                part = part.replace(/^["']|["']$/g, '').trim();
+                
+                if (!current[part]) {
+                    current[part] = {
+                        name: part,
+                        children: {},
+                        cards: [],
+                        fullPath: parts.slice(0, index + 1).join('::')
+                    };
+                }
+                
+                if (index === parts.length - 1) {
+                    current[part].cards.push(card);
+                }
+                
+                current = current[part].children;
+            });
+        }
+
+        // Renderizar árvore de tags
+        function renderTagTree() {
+            const treeContainer = document.getElementById('tagTree');
+            treeContainer.innerHTML = '';
+            
+            renderTagNode(tagHierarchy, treeContainer, 0);
+        }
+
+        // Renderizar nó da tag
+        function renderTagNode(node, container, level) {
+            Object.keys(node).sort().forEach(key => {
+                const tagData = node[key];
+                const hasChildren = Object.keys(tagData.children).length > 0;
+                
+                const tagElement = document.createElement('div');
+                tagElement.className = 'tag-node';
+                
+                const contentElement = document.createElement('div');
+                contentElement.className = 'tag-content';
+                
+                // Arrow
+                const arrow = document.createElement('div');
+                arrow.className = 'tag-arrow';
+                if (hasChildren) {
+                    arrow.innerHTML = '<svg viewBox="0 0 24 24"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/></svg>';
+                }
+                
+                // Label
+                const label = document.createElement('div');
+                label.className = 'tag-label';
+                label.textContent = tagData.name;
+                
+                // Count
+                const count = document.createElement('div');
+                count.className = 'tag-count';
+                count.textContent = countCards(tagData);
+                
+                contentElement.appendChild(arrow);
+                contentElement.appendChild(label);
+                contentElement.appendChild(count);
+                tagElement.appendChild(contentElement);
+                
+                // Children container
+                const childrenContainer = document.createElement('div');
+                childrenContainer.className = 'tag-children';
+                if (hasChildren) {
+                    renderTagNode(tagData.children, childrenContainer, level + 1);
+                }
+                tagElement.appendChild(childrenContainer);
+                
+                // Event listeners
+                contentElement.onclick = () => selectTag(tagData, contentElement);
+                if (hasChildren) {
+                    arrow.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleExpand(arrow, childrenContainer);
+                    };
+                }
+                
+                container.appendChild(tagElement);
+            });
+        }
+
+        // Contar cards em uma tag (incluindo subtagss)
+        function countCards(tagData) {
+            let count = tagData.cards.length;
+            
+            Object.values(tagData.children).forEach(child => {
+                count += countCards(child);
+            });
+            
+            return count;
+        }
+
+        // Toggle expandir/colapsar
+        function toggleExpand(arrow, childrenContainer) {
+            arrow.classList.toggle('expanded');
+            childrenContainer.classList.toggle('expanded');
+        }
+
+        // Selecionar tag
+        function selectTag(tagData, element) {
+            // Remover seleção anterior
+            document.querySelectorAll('.tag-content.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Adicionar seleção
+            element.classList.add('selected');
+            
+            // Atualizar conteúdo
+            updateContent(tagData);
+        }
+
+        // Atualizar área de conteúdo
+        function updateContent(tagData) {
+            const contentArea = document.getElementById('contentArea');
+            
+            // Coletar todos os QIDs desta tag e suas sub-tags
+            const allQids = collectQids(tagData);
+            
+            if (allQids.length === 0) {
+                contentArea.innerHTML = `
+                    <div class="content-header">
+                        <h3>${tagData.name}</h3>
+                        <div class="breadcrumb">
+                            <span>${tagData.fullPath}</span>
+                        </div>
+                    </div>
+                    <div class="empty-state">
+                        <p>Nenhum Question ID do UWorld encontrado nesta tag</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Agrupar por Step
+            const qidsByStep = {};
+            allQids.forEach(qid => {
+                if (!qidsByStep[qid.step]) {
+                    qidsByStep[qid.step] = [];
+                }
+                qidsByStep[qid.step].push(qid.qid);
+            });
+            
+            let html = `
+                <div class="content-header">
+                    <h3>${tagData.name}</h3>
+                    <div class="breadcrumb">
+                        <span>${tagData.fullPath}</span>
+                    </div>
+                </div>
+            `;
+            
+            // Renderizar QIDs por Step
+            Object.keys(qidsByStep).sort().forEach(step => {
+                const sortedQids = qidsByStep[step].sort((a, b) => parseInt(a) - parseInt(b));
+                const qidsString = sortedQids.join(', ');
+                
+                html += `
+                    <div class="qids-section">
+                        <h4>Step ${step} - UWorld QIDs (${sortedQids.length} questões)</h4>
+                        <div class="qids-box" id="qids-step-${step}">
+                            ${qidsString}
+                        </div>
+                        <button class="copy-button" onclick="copyToClipboard('qids-step-${step}')">
+                            Copiar QIDs
+                        </button>
+                    </div>
+                `;
+            });
+            
+            contentArea.innerHTML = html;
+        }
+
+        // Coletar todos os QIDs de uma tag e suas sub-tags
+        function collectQids(tagData) {
+            let qids = [];
+            
+            // QIDs desta tag
+            tagData.cards.forEach(card => {
+                if (card.qids) {
+                    qids = qids.concat(card.qids);
+                }
+            });
+            
+            // QIDs das sub-tags
+            Object.values(tagData.children).forEach(child => {
+                qids = qids.concat(collectQids(child));
+            });
+            
+            // Remover duplicatas
+            const uniqueQids = [];
+            const seen = new Set();
+            
+            qids.forEach(qid => {
+                const key = `${qid.step}-${qid.qid}`;
+                if (!seen.has(key)) {
+                    seen.add(key);
+                    uniqueQids.push(qid);
+                }
+            });
+            
+            return uniqueQids;
+        }
+
+        // Copiar para clipboard
+        function copyToClipboard(elementId) {
+            const element = document.getElementById(elementId);
+            const text = element.textContent;
+            
+            navigator.clipboard.writeText(text).then(() => {
+                // Feedback visual
+                const button = element.nextElementSibling;
+                const originalText = button.textContent;
+                button.textContent = 'Copiado!';
+                button.style.background = '#4caf50';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#4a7fff';
+                }, 2000);
+            }).catch(err => {
+                console.error('Erro ao copiar:', err);
+            });
+        }
+
+        // Busca de tags
+        document.getElementById('searchInput').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            filterTags(query);
+        });
+
+        function filterTags(query) {
+            const allNodes = document.querySelectorAll('.tag-node');
+            
+            allNodes.forEach(node => {
+                const label = node.querySelector('.tag-label').textContent.toLowerCase();
+                const matches = label.includes(query);
+                
+                if (query === '') {
+                    node.style.display = 'block';
+                } else if (matches) {
+                    node.style.display = 'block';
+                    // Expandir pais se necessário
+                    let parent = node.parentElement;
+                    while (parent && parent.classList.contains('tag-children')) {
+                        parent.classList.add('expanded');
+                        const arrow = parent.previousElementSibling.querySelector('.tag-arrow');
+                        if (arrow) arrow.classList.add('expanded');
+                        parent = parent.parentElement.parentElement;
+                    }
+                } else {
+                    node.style.display = 'none';
+                }
+            });
+        }
+
+        // Inicialização
+        window.addEventListener('DOMContentLoaded', () => {
+            // Configurar evento de Enter no campo de CPF
+            document.getElementById('cpfInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    validateLogin();
+                }
+            });
+            
+            // Verificar se já está autenticado
+            const isAuthenticated = sessionStorage.getItem('authenticated');
+            if (isAuthenticated === 'true') {
+                showMainApp();
+            }
+        });
+
+        // Função de validação de login
+        function validateLogin() {
+            const cpfInput = document.getElementById('cpfInput');
+            const cpf = cpfInput.value.replace(/\D/g, ''); // Remove não-dígitos
+            
+            if (CPFS_AUTORIZADOS.includes(cpf)) {
+                sessionStorage.setItem('authenticated', 'true');
+                showMainApp();
+            } else {
+                document.getElementById('loginError').classList.add('show');
+                cpfInput.value = '';
+                cpfInput.focus();
+                
+                // Remover mensagem de erro após 3 segundos
+                setTimeout(() => {
+                    document.getElementById('loginError').classList.remove('show');
+                }, 3000);
+            }
+        }
+
+        // Mostrar aplicação principal
+        function showMainApp() {
+            document.getElementById('loginContainer').classList.add('hidden');
+            document.getElementById('mainApp').style.display = 'grid';
+            
+            // Inicializar a aplicação
+            parseAnkiData(RAW_TAGS);
+            renderTagTree();
+        }
+    </script>
+</body>
+</html>
